@@ -1,0 +1,55 @@
+diff --git a/package/mtk/drivers/mt_wifi/src/mt_wifi/os/linux/rt_linux.c b/package/mtk/drivers/mt_wifi/src/mt_wifi/os/linux/rt_linux.c
+index 95b0d08a9f..0279308c4e 100644
+--- a/package/mtk/drivers/mt_wifi/src/mt_wifi/os/linux/rt_linux.c
++++ b/package/mtk/drivers/mt_wifi/src/mt_wifi/os/linux/rt_linux.c
+@@ -58,6 +58,15 @@
+ #endif /*VLAN_SUPPORT*/
+ #include "wnm.h"
+ 
++/* Module parameter for debug control */
++int enable_debug = 0;
++#if (KERNEL_VERSION(2, 6, 12) >= LINUX_VERSION_CODE)
++MODULE_PARM(enable_debug, "i");
++#else
++module_param(enable_debug, int, 0);
++#endif
++MODULE_PARM_DESC(enable_debug, "rt_wifi: enable debug logging (1=enable, 0=disable)");
++
+ /* TODO */
+ #undef RT_CONFIG_IF_OPMODE_ON_AP
+ #undef RT_CONFIG_IF_OPMODE_ON_STA
+@@ -117,11 +126,23 @@ static inline void netdev_priv_set(struct net_device *dev, void *priv)
+ }
+ 
+ 
+-int DebugLevel = DBG_LVL_NOTICE;
++int DebugLevel = DBG_LVL_OFF;
+ 
+-UINT32 DebugCategory = DBG_CAT_EN_ALL_MASK
++UINT32 DebugCategory = 0;
++
++/* Initialize debug settings based on enable_debug parameter */
++void __init init_debug_settings(void)
++{
++	if (enable_debug) {
++		DebugLevel = DBG_LVL_NOTICE;
++		DebugCategory = DBG_CAT_EN_ALL_MASK
+ 				& ~(0x1 << DBG_CAT_TX)
+ 				& ~(0x1 << DBG_CAT_PS);
++	} else {
++		DebugLevel = DBG_LVL_OFF;
++		DebugCategory = 0;
++	}
++}
+ 
+ UINT32 DebugSubCategory[DBG_LVL_MAX + 1][32] = {
+ 	{
+@@ -5660,6 +5681,8 @@ VOID os_module_init(VOID)
+ 	RTMP_STRING dbg_option[32] = {0};
+ 	NDIS_STATUS retval = NDIS_STATUS_SUCCESS;
+ 
++	init_debug_settings();
++
+ #ifdef CONFIG_CONNINFRA_SUPPORT
+ 	conninfra_pwr_on(CONNDRV_TYPE_WIFI);
+ #endif /* CONFIG_CONNINFRA_SUPPORT */
