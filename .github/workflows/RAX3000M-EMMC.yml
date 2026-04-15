@@ -1,0 +1,173 @@
+name: RAX3000M-EMMC
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:             
+      OP_IP:
+        description: '静态IP地址'     
+        required: false
+        default: '192.168.92.200' 
+        type: string
+      OP_author:
+        description: '定制作者'     
+        required: false
+        default: 'L' 
+        type: string    
+      CUSTOM_PLUGINS:
+        description: '自定义插件名称，用空格分隔'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build_firmware:
+    runs-on: ubuntu-22.04
+
+    steps: 
+    - name: 检查分支
+      uses: actions/checkout@v6
+
+    - name: 释放磁盘空间
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d
+        sudo swapoff -a
+        sudo rm -f /swapfile /mnt/swapfile
+        sudo docker image prune -a -f
+        sudo systemctl stop docker
+        sudo snap set system refresh.retain=2
+        sudo apt-get -y purge firefox clang* ghc* google* llvm* mono* mongo* mysql* php*
+        sudo apt-get -y autoremove --purge
+        sudo apt-get clean
+        sudo rm -rf /etc/mysql /etc/php /usr/lib/jvm /usr/libexec/docker /usr/local /usr/src/* /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} /root/{.sbt,.local,.npm}
+        sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+        rm -rf ~/{.cargo,.dotnet,.rustup}
+        df -Th
+
+    - name: 编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tar build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-distutils python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils
+        sudo apt-get clean
+        git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
+        sudo timedatectl set-timezone 'Asia/Shanghai'
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+        df -Th
+
+    - name: 设置环境变量
+      run: |
+        TAG="$(date +'%Y%m%d')"
+        echo "tag=$TAG" >> $GITHUB_ENV
+        echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
+        echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
+        echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
+        echo "REPO_BRANCH=RAX3000M" >> $GITHUB_ENV
+
+    - name: 克隆源代码
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone . openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        
+    - name: 切换分支
+      run: |
+        cd openwrt
+        git checkout RAX3000M
+        
+    - name: 取回缓存 staging_dir
+      uses: actions/cache@v5
+      with:
+        path: |
+          openwrt/staging_dir
+        key: openwrt-toolchain-cache
+        restore-keys: |
+          openwrt-toolchain-cache
+            
+    - name: 更新源
+      run: |
+        set -x
+        cd openwrt
+        find ./staging_dir/ -name '*' -exec touch {} \; >/dev/null 2>&1
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a 
+
+
+    - name: 加载自定义配置
+      run: |
+        cp openwrt/defconfig/3000m-emmc.config openwrt/.config
+        
+        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
+        
+        IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
+        for plugin in "${plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
+        done
+        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" openwrt/files/etc/banner
+    
+    - name: 下载编译依赖
+      id: package
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+    
+    - name: 编译源码
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 V=s
+
+    - name: 查看磁盘使用情况
+      if: (!cancelled())
+      run: df -hT
+
+    - name: 整理文件
+      id: organize
+      run: |
+        cd openwrt/bin/targets/*/*
+        rm -rf packages
+        rm -rf *.buildinfo
+        rm -rf profiles.json
+        rm -rf *.manifest
+        rm -rf *bl2.bin
+        rm -rf *kernel.bin
+        rm -rf *.sha
+        rm -rf sha256sums
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+    - name: 上传固件到Releases
+      uses: softprops/action-gh-release@v2.6.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.tag }}
+        files: ${{ env.FIRMWARE }}/*
+        body: |
+          ====================固件信息=======================
+          静态IP：${{ github.event.inputs.OP_IP }}
+          插件：${{ github.event.inputs.CUSTOM_PLUGINS }}
+          定制作者：${{ github.event.inputs.OP_author }}
+
+    - name: 清理Releases
+      uses: dev-drprasad/delete-older-releases@v0.3.4
+      with:
+        keep_latest: 1
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 缓存 staging_dir
+      uses: actions/cache@v5
+      with:
+        path: |
+          openwrt/staging_dir
+        key: openwrt-toolchain-cache
+        restore-keys: |
+          openwrt-toolchain-cache
