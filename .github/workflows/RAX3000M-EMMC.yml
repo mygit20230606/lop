@@ -70,7 +70,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone . openwrt
+        git clone https://github.com/mygit20230606/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
     - name: 切换分支
