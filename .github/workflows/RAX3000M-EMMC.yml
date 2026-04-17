@@ -82,14 +82,6 @@ jobs:
         cd openwrt
         git checkout RAX3000M
         
-    - name: 取回缓存 staging_dir
-      uses: actions/cache@v5
-      with:
-        path: |
-          openwrt/staging_dir
-        key: openwrt-toolchain-cache
-        restore-keys: |
-          openwrt-toolchain-cache
             
     - name: 更新源
       run: |
@@ -98,12 +90,23 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a 
 
+    - name: 自动缓存管理
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        toolchain: true
+        ccache: true
+        mixkey: RAX3000M-EMMC
+        prefix: openwrt
 
     - name: 加载自定义配置
       run: |
         cp openwrt/defconfig/3000m-emmc.config openwrt/.config
         
         sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
+        # 修改 WiFi 配置
+        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i "s/set wireless.default_\$\{dev\}.encryption=none/set wireless.default_\$\{dev\}.encryption=psk2\\n\\\t\\\tset wireless.default_\$\{dev\}.key=\"12345678asd\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
@@ -119,7 +122,8 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-    
+  
+
     - name: 编译源码
       id: compile
       run: |
@@ -166,11 +170,3 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 缓存 staging_dir
-      uses: actions/cache@v5
-      with:
-        path: |
-          openwrt/staging_dir
-        key: openwrt-toolchain-cache
-        restore-keys: |
-          openwrt-toolchain-cache
