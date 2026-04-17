@@ -106,7 +106,7 @@ jobs:
         # 修改 WiFi 配置
         sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i "s/set wireless.default_\$\{dev\}.encryption=none/set wireless.default_\$\{dev\}.encryption=psk2\\n\\\t\\\tset wireless.default_\$\{dev\}.key=\"12345678asd\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
