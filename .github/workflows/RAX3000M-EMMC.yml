@@ -113,6 +113,7 @@ jobs:
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
+          echo "已添加插件配置: CONFIG_PACKAGE_${plugin}=y" 
         done
         sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" openwrt/files/etc/banner
     
