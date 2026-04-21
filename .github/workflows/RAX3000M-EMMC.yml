@@ -101,12 +101,14 @@ jobs:
     - name: 加载自定义配置
       run: |
         cp openwrt/defconfig/3000m-emmc.config openwrt/.config
-        
+        #设置ip
         sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
         # 修改 WiFi 配置
         sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        #修改nfs内核编译报错
+        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' /home/book/immortalwrt-mt798x-6.6/feeds/packages/net/nfs-kernel-server/Makefile
         
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
@@ -147,6 +149,7 @@ jobs:
         rm -rf *kernel.bin
         rm -rf *.sha
         rm -rf sha256sums
+        cp openwrt/.config .config
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: 上传固件到Releases
