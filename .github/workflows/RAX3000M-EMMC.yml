@@ -122,6 +122,8 @@ jobs:
       run: |
         cd openwrt
         make defconfig
+        # 在这里判断.config是否包含CONFIG_PACKAGE_luci-app-dockerman=y，如果没有就停止工作流
+        grep -q "CONFIG_PACKAGE_luci-app-dockerman=y" .config || exit 1
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
