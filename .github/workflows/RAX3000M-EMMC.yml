@@ -108,7 +108,7 @@ jobs:
         sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
         #修改nfs内核编译报错
-        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' /home/book/immortalwrt-mt798x-6.6/feeds/packages/net/nfs-kernel-server/Makefile
+        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' openwrt/feeds/packages/net/nfs-kernel-server/Makefile
         
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
