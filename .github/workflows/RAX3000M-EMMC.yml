@@ -128,6 +128,15 @@ jobs:
 
         # 修改banner
         sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
+
+        # 修改内核vermagic
+        sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
+
+        # 添加wifi日志控制
+        cp ../RAX3000M/rt_linux.patch .
+        patch -p1 < rt_linux.patch
+
+
     
     - name: 下载编译依赖
       id: package
