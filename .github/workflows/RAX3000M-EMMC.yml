@@ -118,7 +118,7 @@ jobs:
         sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
 
         # 添加wifi日志控制
-        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch openwrt/
+        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
         patch -p1 < rt_linux.patch
 
 
