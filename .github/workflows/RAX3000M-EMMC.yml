@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: ''
+        default: 'luci-app-dockerman cryptsetup nfs-kernel-server'
         type: string
 
 #设置仓库的读写权限
@@ -73,15 +73,9 @@ jobs:
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone https://github.com/mygit20230606/immortalwrt-mt798x-6.6 openwrt
+        git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
-    - name: 切换分支
-      run: |
-        cd openwrt
-        git checkout RAX3000M
-        
-            
     - name: 更新源
       run: |
         set -x
@@ -99,32 +93,47 @@ jobs:
 
     - name: 加载自定义配置
       run: |
-        cp openwrt/defconfig/3000m-emmc.config openwrt/.config
-        #设置ip
-        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" openwrt/package/base-files/files/bin/config_generate
-        # 修改 WiFi 配置
-        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        #修改nfs内核编译报错
-        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' openwrt/feeds/packages/net/nfs-kernel-server/Makefile
+        cd openwrt
+        cp defconfig/mt7981-ax3000.config .config
+        # 选择RAX3000M-EMMC
+        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config 
+        # 加载自定义插件配置
+        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
         
+        # 默认集成插件列表
+        default_plugins=(luci-theme-argon luci-app-hd-idle openssh-sftp-server htop fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas)
+        
+        # 添加默认插件
+        for plugin in "${default_plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
+        done
+        echo "已添加默认插件: ${default_plugins[*]}"
+        
+        # 添加用户自定义插件
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
-          echo "CONFIG_PACKAGE_${plugin}=y" >> openwrt/.config
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
-        echo "已添加插件配置: ${plugins[@]}"
-        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" openwrt/files/etc/banner
+        echo "已添加自定义插件: ${plugins[@]}"
+        #修改nfs内核编译报错
+        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
+
+        #设置ip
+        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
+
+        # 修改 WiFi 配置
+        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' openwrt/package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+
+        # 修改banner
+        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
     
     - name: 下载编译依赖
       id: package
       run: |
         cd openwrt
         make defconfig
-        # 在这里判断.config是否包含已选插件的配置，如果没有就停止工作流
-        for plugin in "${plugins[@]}"; do
-          grep -q "CONFIG_PACKAGE_${plugin}=y" .config || { echo "错误：未找到 CONFIG_PACKAGE_${plugin}=y 配置"; exit 1; }
-        done 
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
@@ -176,3 +185,7 @@ jobs:
     #    delete_tags: true
     #  env:
     #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #    - name: 切换分支
+    #  run: |
+    #    cd openwrt
+    #    git checkout RAX3000M
