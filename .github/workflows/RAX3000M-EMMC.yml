@@ -144,7 +144,7 @@ jobs:
     - name: 整理文件
       id: organize
       run: |
-        cp openwrt/.config openwrt/bin/targets/*/*/.config
+        cp openwrt/.config openwrt/bin/targets/*/*/
         cd openwrt/bin/targets/*/*
         rm -rf packages
         rm -rf *.buildinfo
