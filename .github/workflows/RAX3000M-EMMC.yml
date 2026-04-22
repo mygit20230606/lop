@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps: 
-    
+
     - name: 检出代码
       uses: actions/checkout@v6
 
@@ -53,7 +53,6 @@ jobs:
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
-        echo "REPO_BRANCH=RAX3000M" >> $GITHUB_ENV
 
     - name: 克隆源代码
       working-directory: /workdir
@@ -119,7 +118,7 @@ jobs:
         sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
 
         # 添加wifi日志控制
-        cp ../RAX3000M/rt_linux.patch .
+        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch openwrt/
         patch -p1 < rt_linux.patch
 
 
