@@ -126,6 +126,8 @@ jobs:
         # 添加wifi日志控制
         cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
         patch -p1 < rt_linux.patch
+        #去除频繁日志
+        sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
 
 
     
