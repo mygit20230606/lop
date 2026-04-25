@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-dockerman cryptsetup nfs-kernel-server'
+        default: 'luci-app-dockerman cryptsetup nfs-kernel-server luci-app-frpc'
         type: string
       COMPILE_ALL_KMODS:
         description: '编译所有内核模块'
