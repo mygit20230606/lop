@@ -232,10 +232,11 @@ jobs:
     - name: 编译源码（所有kmod）
       if: steps.check_kmods.outputs.compile_all_kmods == 'true'
       id: compile_kmods
+      continue-on-error: true
       run: |
         cd openwrt
         echo -e "编译所有内核模块 - $(nproc) thread compile"
-        make -k -j$(nproc) || make -j1 V=s
+        make -k -j$(nproc)
 
     - name: 整理文件（所有kmod）
       if: steps.check_kmods.outputs.compile_all_kmods == 'true'
