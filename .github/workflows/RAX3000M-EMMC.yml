@@ -3,22 +3,27 @@ name: RAX3000M-EMMC
 on:
   repository_dispatch:
   workflow_dispatch:
-    inputs:             
+    inputs:
       OP_IP:
-        description: '静态IP地址'     
+        description: '静态IP地址'
         required: false
-        default: '192.168.92.200' 
+        default: '192.168.92.200'
         type: string
       OP_author:
-        description: '定制作者'     
+        description: '定制作者'
         required: false
-        default: 'L' 
-        type: string    
+        default: 'L'
+        type: string
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
         default: 'luci-app-dockerman cryptsetup nfs-kernel-server'
         type: string
+      COMPILE_ALL_KMODS:
+        description: '编译所有内核模块'
+        required: false
+        default: 'false'
+        type: boolean
 
 #设置仓库的读写权限
 permissions:
@@ -173,6 +178,111 @@ jobs:
           自定义插件：${{ github.event.inputs.CUSTOM_PLUGINS }}
           默认插件：${{ env.DEFAULT_PLUGINS }}
           定制作者：${{ github.event.inputs.OP_author }}
+          编译所有内核模块：${{ github.event.inputs.COMPILE_ALL_KMODS }}
+
+    - name: 检查是否编译所有kmod
+      id: check_kmods
+      if: ${{ github.event.inputs.COMPILE_ALL_KMODS == 'true' }}
+      run: |
+        echo "开始编译所有内核模块..."
+        echo "compile_all_kmods=true" >> $GITHUB_OUTPUT
+
+    - name: 重新加载配置以编译所有kmod
+      if: steps.check_kmods.outputs.compile_all_kmods == 'true'
+      run: |
+        cd openwrt
+        rm .config
+        cp defconfig/mt7981-ax3000.config .config
+        # 选择RAX3000M-EMMC
+        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config
+
+        # 添加编译所有内核模块的配置
+        echo "CONFIG_ALL_NONSHARED=y" >> .config
+        echo "CONFIG_ALL_KMODS=y" >> .config
+
+        # 加载自定义插件配置
+        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
+
+        # 默认集成插件列表
+        default_plugins=(luci-theme-argon luci-app-hd-idle openssh-sftp-server htop fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas)
+
+        # 添加默认插件
+        for plugin in "${default_plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
+        done
+
+        # 添加用户自定义插件
+        IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
+        for plugin in "${plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
+        done
+
+        # 修改nfs内核编译报错
+        sed -i '/-Wno-error=missing-include-dirs/i\\\t\t-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
+
+        #设置ip
+        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
+
+        # 修改 WiFi 配置
+        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\\n\\t\\tset wireless.default_${dev}.key="12345678asd"/g' package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+
+        # 修改banner
+        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
+
+        # 修改内核vermagic
+        sed -i 's|.*.vermagic.*|\\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
+
+        # 添加wifi日志控制
+        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
+        patch -p1 < rt_linux.patch
+
+    - name: 下载编译依赖（所有kmod）
+      if: steps.check_kmods.outputs.compile_all_kmods == 'true'
+      id: package_kmods
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: 编译源码（所有kmod）
+      if: steps.check_kmods.outputs.compile_all_kmods == 'true'
+      id: compile_kmods
+      run: |
+        cd openwrt
+        echo -e "编译所有内核模块 - $(nproc) thread compile"
+        make -k -j$(nproc) || make -j1 V=s
+
+    - name: 整理文件（所有kmod）
+      if: steps.check_kmods.outputs.compile_all_kmods == 'true'
+      id: organize_kmods
+      run: |
+        cp openwrt/.config openwrt/bin/targets/*/*/
+        cd openwrt/bin/targets/*/*
+        # 将packages目录打包成packages.gz
+        [ -d packages ] && tar -czf packages.gz packages
+        rm -rf packages
+        rm -rf *.buildinfo
+        rm -rf profiles.json
+        rm -rf *.manifest
+        rm -rf *bl2.bin
+        rm -rf *kernel.bin
+        rm -rf *.sha
+        rm -rf sha256sums
+        echo "FIRMWARE_KMODS=$PWD" >> $GITHUB_ENV
+
+    - name: 追加packages.gz到release
+      if: steps.check_kmods.outputs.compile_all_kmods == 'true'
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.tag }}
+        files: ${{ env.FIRMWARE_KMODS }}/packages.gz
+        body: "追加的内核模块包"
 
     #- name: 清理Releases
     #  uses: dev-drprasad/delete-older-releases@v0.3.4
