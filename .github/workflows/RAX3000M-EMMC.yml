@@ -217,27 +217,6 @@ jobs:
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
 
-        # 修改nfs内核编译报错
-        sed -i '/-Wno-error=missing-include-dirs/i\\\t\t-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
-
-        #设置ip
-        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
-
-        # 修改 WiFi 配置
-        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\\n\\t\\tset wireless.default_${dev}.key="12345678asd"/g' package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-
-        # 修改banner
-        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
-
-        # 修改内核vermagic
-        sed -i 's|.*.vermagic.*|\\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
-
-        # 添加wifi日志控制
-        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
-        patch -p1 < rt_linux.patch
-
     - name: 下载编译依赖（所有kmod）
       if: steps.check_kmods.outputs.compile_all_kmods == 'true'
       id: package_kmods
