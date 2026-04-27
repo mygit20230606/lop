@@ -58,6 +58,9 @@ jobs:
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
+        # 定义默认插件列表
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas"
+        echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
       working-directory: /workdir
@@ -90,15 +93,12 @@ jobs:
         # 加载自定义插件配置
         sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
         
-        # 默认集成插件列表
-        default_plugins=(luci-theme-argon luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas)
-        
         # 添加默认插件
+        IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
         for plugin in "${default_plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加默认插件: ${default_plugins[*]}"
-        echo "DEFAULT_PLUGINS=${default_plugins[*]}" >> $GITHUB_ENV
         
         # 添加用户自定义插件
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
@@ -106,6 +106,7 @@ jobs:
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加自定义插件: ${plugins[@]}"
+        
         #修改nfs内核编译报错
         sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
 
@@ -209,10 +210,8 @@ jobs:
         # 加载自定义插件配置
         sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
 
-        # 默认集成插件列表
-        default_plugins=(luci-theme-argon luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas)
-
         # 添加默认插件
+        IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
         for plugin in "${default_plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
