@@ -1,4 +1,4 @@
-name: RAX3000M-EMMC
+name: E8820S
 
 on:
   repository_dispatch:
@@ -7,7 +7,7 @@ on:
       OP_IP:
         description: '静态IP地址'
         required: false
-        default: '192.168.92.200'
+        default: '192.168.91.1'
         type: string
       OP_author:
         description: '定制作者'
@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-dockerman cryptsetup nfs-kernel-server luci-app-frpc'
+        default: ''
         type: string
       COMPILE_ALL_KMODS:
         description: '编译所有内核模块'
@@ -59,14 +59,13 @@ jobs:
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
-        DEFAULT_PLUGINS="luci-theme-argon luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas"
-        echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
+        DEFAULT_PLUGINS="" >> $GITHUB_ENV
 
     - name: 克隆源代码
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
+        git clone https://github.com/coolsnowwolf/lede openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
     - name: 更新源
@@ -81,18 +80,18 @@ jobs:
       with:
         toolchain: true
         ccache: true
-        mixkey: RAX3000M-EMMC
+        mixkey: E8820S
         prefix: openwrt
 
     - name: 加载自定义配置
       run: |
         cd openwrt
-        cp defconfig/mt7981-ax3000.config .config
-        # 选择RAX3000M-EMMC
-        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config 
-        # 加载自定义插件配置
-        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
-        
+        # 选择E8820S配置
+        cp $GITHUB_WORKSPACE/E8820S/.config .config
+        cp $GITHUB_WORKSPACE/E8820S/mt7621_zte_e8820s.dts target/linux/ramips/dts/mt7621_zte_e8820s.dts
+        cp $GITHUB_WORKSPACE/E8820S/mt7621.mk target/linux/ramips/image/mt7621.mk
+
+
         # 添加默认插件
         IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
         for plugin in "${default_plugins[@]}"; do
@@ -107,32 +106,12 @@ jobs:
         done
         echo "已添加自定义插件: ${plugins[@]}"
         
-        #修改nfs内核编译报错
-        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
-
         #设置ip
-        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
-
-        # 修改 WiFi 配置
-        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
-
-        # 修改banner
-        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
+        sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
 
         # 修改内核vermagic
         sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
 
-        # 添加wifi日志控制
-        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
-        patch -p1 < rt_linux.patch
-        
-        #去除频繁日志
-        sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
-
-        p "启用 bash"
-        sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
 
 
     
@@ -163,10 +142,8 @@ jobs:
         cp openwrt/.config openwrt/bin/targets/*/*/
         cd openwrt/bin/targets/*/*
         rm -rf packages
-        rm -rf *.buildinfo
         rm -rf profiles.json
         rm -rf *.manifest
-        rm -rf *bl2.bin
         rm -rf *kernel.bin
         rm -rf *.sha
         rm -rf sha256sums
@@ -199,16 +176,12 @@ jobs:
       run: |
         cd openwrt
         rm .config
-        cp defconfig/mt7981-ax3000.config .config
-        # 选择RAX3000M-EMMC
-        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config
+        # 选择E8820S配置
+        cp $GITHUB_WORKSPACE/E8820S/.config .config
 
         # 添加编译所有内核模块的配置
         echo "CONFIG_ALL_NONSHARED=y" >> .config
         echo "CONFIG_ALL_KMODS=y" >> .config
-
-        # 加载自定义插件配置
-        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
 
         # 添加默认插件
         IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
