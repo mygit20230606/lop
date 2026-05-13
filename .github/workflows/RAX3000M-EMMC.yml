@@ -69,7 +69,7 @@ jobs:
         git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         
-    - name: 更新源
+    - name: 下载自定义插件
       run: |
         set -x
         cd openwrt
@@ -83,10 +83,7 @@ jobs:
         sed -i 's/1.2.16/v1.2.16/' vnt/Makefile
         #修复日志警告
         sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
-        cd ../..
-        
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a 
+
 
     - name: 自动缓存管理
       uses: actions/cache@v4
@@ -104,6 +101,8 @@ jobs:
     - name: 加载自定义配置
       run: |
         cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a 
         cp defconfig/mt7981-ax3000.config .config
         # 选择RAX3000M-EMMC
         echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config 
