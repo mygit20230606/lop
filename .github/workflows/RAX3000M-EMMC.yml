@@ -87,12 +87,17 @@ jobs:
         ./scripts/feeds install -a 
 
     - name: 自动缓存管理
-      uses: HiGarfield/cachewrtbuild@main
+      uses: actions/cache@v4
+      id: cache
       with:
-        toolchain: true
-        ccache: true
-        mixkey: RAX3000M-EMMC
-        prefix: openwrt
+        path: |
+          openwrt/build_dir/target-*
+          openwrt/staging_dir
+          openwrt/toolchain
+          openwrt/dl
+        key: rax3000m-emmc-toolchain-cache
+        restore-keys: |
+          rax3000m-emmc-toolchain-cache
 
     - name: 加载自定义配置
       run: |
@@ -156,6 +161,11 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
   
+    - name: 保存.config到Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: config-file
+        path: openwrt/.config
 
     - name: 编译源码
       id: compile
