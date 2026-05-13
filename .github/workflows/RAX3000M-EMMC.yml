@@ -142,7 +142,7 @@ jobs:
         #去除频繁日志
         sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
 
-        p "启用 bash"
+        # 启用 bash
         sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
 
 
