@@ -165,7 +165,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: config-file
-        path: openwrt/.config
+        path: /workdir/openwrt/.config
 
     - name: 编译源码
       id: compile
