@@ -174,7 +174,6 @@ jobs:
         cp openwrt/.config openwrt/bin/targets/*/*/
         cd openwrt/bin/targets/*/*
         rm -rf packages
-        rm -rf *.buildinfo
         rm -rf profiles.json
         rm -rf *.manifest
         rm -rf *bl2.bin
