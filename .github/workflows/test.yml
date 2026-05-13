@@ -1,0 +1,177 @@
+name: RAX3000M-EMMC
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      OP_IP:
+        description: '静态IP地址'
+        required: false
+        default: '192.168.92.200'
+        type: string
+      OP_author:
+        description: '定制作者'
+        required: false
+        default: 'L'
+        type: string
+      CUSTOM_PLUGINS:
+        description: '自定义插件名称，用空格分隔'
+        required: false
+        default: 'luci-app-dockerman cryptsetup nfs-kernel-server luci-app-frpc'
+        type: string
+      COMPILE_ALL_KMODS:
+        description: '编译所有内核模块'
+        required: false
+        default: 'false'
+        type: boolean
+
+#设置仓库的读写权限
+permissions:
+  contents: write
+
+jobs:
+  build_firmware:
+    runs-on: ubuntu-22.04
+
+    steps: 
+
+    - name: 检出代码
+      uses: actions/checkout@v6
+
+    - name: 编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tar build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-distutils python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils
+        sudo apt-get clean
+        git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
+        sudo timedatectl set-timezone 'Asia/Shanghai'
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+        df -Th
+
+    - name: 设置环境变量
+      run: |
+        TAG="$(date +'%Y%m%d')"
+        echo "tag=$TAG" >> $GITHUB_ENV
+        echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
+        echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
+        echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
+        # 定义默认插件列表
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
+        echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
+
+    - name: 克隆源代码
+      working-directory: /workdir
+      run: |
+        df -hT $PWD
+        git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        
+    - name: 更新源
+      run: |
+        set -x
+        cd openwrt
+        #下载vnt插件
+        git clone https://github.com/lmq8267/luci-app-vnt.git package/vnt
+        #检出1.2.16标签
+        cd package/vnt && git checkout 1.2.16
+        #修改vnt/Makefile文件 把vnt-dev/vnt替换为mygit20230606/vnt_build
+        sed -i 's#vnt-dev/vnt#mygit20230606/vnt_build#' vnt/Makefile
+        #修复日志警告
+        sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
+        cd ../..
+        
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a 
+
+    - name: 自动缓存管理
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: |
+          openwrt/build_dir/target-*
+          openwrt/staging_dir
+          openwrt/toolchain
+          openwrt/dl
+        key: rax3000m-emmc-toolchain-cache
+        restore-keys: |
+          rax3000m-emmc-toolchain-cache
+
+    - name: 加载自定义配置
+      run: |
+        cd openwrt
+        cp defconfig/mt7981-ax3000.config .config
+        # 选择RAX3000M-EMMC
+        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config 
+        # 加载自定义插件配置
+        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
+        
+        # 添加默认插件
+        IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
+        for plugin in "${default_plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
+        done
+        echo "已添加默认插件: ${default_plugins[*]}"
+        
+        # 添加用户自定义插件
+        IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
+        for plugin in "${plugins[@]}"; do
+          echo "CONFIG_PACKAGE_${plugin}=y" >> .config
+        done
+        echo "已添加自定义插件: ${plugins[@]}"
+        
+        #修改nfs内核编译报错
+        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
+
+        #设置ip
+        sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
+
+        # 修改 WiFi 配置
+        sed -i "s/ssid=\"ImmortalWrt-2.4G\"/ssid=\"2.4\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i "s/ssid=\"ImmortalWrt-5G\"/ssid=\"5\"/g" package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+        sed -i 's/set wireless.default_${dev}.encryption=none/set wireless.default_${dev}.encryption=psk2\n\t\tset wireless.default_${dev}.key="12345678asd"/g' package/mtk/applications/mtwifi-cfg/files/mtwifi.sh
+
+        # 修改banner
+        sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') by L/g" files/etc/banner
+
+        # 修改内核vermagic
+        sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
+
+        # 添加wifi日志控制
+        #cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
+        #patch -p1 < rt_linux.patch
+        #通过iwpriv ra0 set Debug=0 可以关闭日志 无需修改内核代码
+        
+        #去除频繁日志
+        sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
+
+        # 启用 bash
+        sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
+
+
+    
+    - name: 下载编译依赖
+      id: package
+      run: |
+        cd openwrt
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+  
+    - name: 保存.config到Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: config-file
+        path: openwrt/.config
+
+    - name: 编译源码
+      id: compile
+      run: |
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        make package/vnt/vnt/compile V=s
+
+    
