@@ -59,7 +59,7 @@ jobs:
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
-        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
@@ -79,6 +79,8 @@ jobs:
         cd package/vnt && git checkout 1.2.16
         #修改vnt/Makefile文件 把vnt-dev/vnt替换为mygit20230606/vnt_build
         sed -i 's#vnt-dev/vnt#mygit20230606/vnt_build#' vnt/Makefile
+        #把1.2.16替换为v1.2.16
+        sed -i 's/1.2.16/v1.2.16/' vnt/Makefile
         #修复日志警告
         sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
         cd ../..
