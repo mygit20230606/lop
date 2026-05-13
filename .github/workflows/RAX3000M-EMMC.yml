@@ -59,7 +59,7 @@ jobs:
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
-        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
