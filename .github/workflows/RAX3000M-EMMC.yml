@@ -59,7 +59,7 @@ jobs:
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
-        DEFAULT_PLUGINS="luci-theme-argon luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas"
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt luci-app-hd-idle openssh-sftp-server htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas "
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
@@ -73,6 +73,16 @@ jobs:
       run: |
         set -x
         cd openwrt
+        #下载vnt插件
+        git clone https://github.com/lmq8267/luci-app-vnt.git package/vnt
+        #检出1.2.16标签
+        cd package/vnt && git checkout 1.2.16
+        #修改vnt/Makefile文件 把vnt-dev/vnt替换为mygit20230606/vnt_build
+        sed -i 's#vnt-dev/vnt#mygit20230606/vnt_build#' vnt/Makefile
+        #修复日志警告
+        sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
+        cd ../..
+        
         ./scripts/feeds update -a
         ./scripts/feeds install -a 
 
@@ -125,8 +135,9 @@ jobs:
         sed -i 's|.*.vermagic.*|\techo "95e6bd5cddf3ff6cfc1d156be2d8a213" > $(LINUX_DIR)/.vermagic|' include/kernel-defaults.mk
 
         # 添加wifi日志控制
-        cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
-        patch -p1 < rt_linux.patch
+        #cp $GITHUB_WORKSPACE/RAX3000M/rt_linux.patch .
+        #patch -p1 < rt_linux.patch
+        #通过iwpriv ra0 set Debug=0 可以关闭日志 无需修改内核代码
         
         #去除频繁日志
         sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
