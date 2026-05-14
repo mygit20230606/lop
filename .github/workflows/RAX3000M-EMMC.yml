@@ -88,11 +88,11 @@ jobs:
         ./scripts/feeds install -a 
 
 
-    - name: 缓存
+    - name: 自动缓存管理
       uses: HiGarfield/cachewrtbuild@main
       with:
-        mixkey: openwrt
-        prefix: ${{ env.workdir_host }}/openwrt
+        mixkey: RAX3000M-EMMC
+        prefix: openwrt
 
     - name: 加载自定义配置
       run: |
