@@ -83,6 +83,7 @@ jobs:
         sed -i 's/1.2.16/v1.2.16/' vnt/Makefile
         #修复日志警告
         sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
+        cd ../..
         ./scripts/feeds update -a
         ./scripts/feeds install -a 
 
