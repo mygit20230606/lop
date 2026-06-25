@@ -7,7 +7,7 @@ on:
       OP_IP:
         description: '静态IP地址'
         required: false
-        default: '192.168.91.1'
+        default: '192.168.92.100'
         type: string
       OP_author:
         description: '定制作者'
@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-vnt vnt nfs-kernel-server'
+        default: 'luci-app-vnt nfs-kernel-server'
         type: string
 #设置仓库的读写权限
 permissions:
@@ -148,7 +148,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.tag }}
+        tag_name: ${{ env.tag }}-e8820s
         files: ${{ env.FIRMWARE }}/*
         body: |
           ====================固件信息=======================

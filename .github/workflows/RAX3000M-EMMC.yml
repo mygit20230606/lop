@@ -168,7 +168,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.tag }}
+        tag_name: ${{ env.tag }}-rax3000m-emmc
         files: ${{ env.FIRMWARE }}/*
         body: |
           ====================固件信息=======================
