@@ -1,4 +1,4 @@
-name: E8820S
+name: E8820S-LEDE
 
 on:
   repository_dispatch:
@@ -148,7 +148,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.tag }}-e8820s
+        tag_name: ${{ env.tag }}-e8820s-lede
         files: ${{ env.FIRMWARE }}/*
         body: |
           ====================固件信息=======================
