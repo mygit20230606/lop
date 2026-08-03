@@ -44,11 +44,8 @@ jobs:
         sed -i 's/size_tmp="24M"/size_tmp="40M"/g' /opt/rt-n56u/trunk/user/scripts/dev_init.sh
         sed -i 's/mtd_part_size=65536/mtd_part_size=7340032/g' /opt/rt-n56u/trunk/user/scripts/mtd_storage.sh
 
-        ##### 修改 WNM 驱动: 默认关闭 WNMBTMEnable, 删除三条扰日志
-        sed -i 's/BOOLEAN WNMBTMEnable = TRUE;/BOOLEAN WNMBTMEnable = FALSE;/g' /opt/rt-n56u/trunk/proprietary/rt_wifi/rtpci/5.0.4.0/mt7615/embedded/common/wnm.c
-        sed -i '/^static VOID SendBTMQueryIndication/,/SendBTMQueryEvent/{/printk/d}' /opt/rt-n56u/trunk/proprietary/rt_wifi/rtpci/5.0.4.0/mt7615/embedded/common/wnm.c
-        sed -i '/^VOID WaitPeerBTMReqTimeout/,/BUILD_TIMER_FUNCTION/{/MTWF_LOG(DBG_CAT_PROTO, CATPROTO_WNM, DBG_LVL_OFF,/{N;d}}' /opt/rt-n56u/trunk/proprietary/rt_wifi/rtpci/5.0.4.0/mt7615/embedded/common/wnm.c
-        sed -i '/isn.t release/{N;d}' /opt/rt-n56u/trunk/proprietary/rt_wifi/rtpci/5.0.4.0/mt7615/embedded/common/wnm.c
+        ##### 屏蔽802.11v BTM超时日志: 删除wnm.c的1669/1699/1700/1711/1712行(printk调试与误报日志)
+        sed -i '1669d;1699d;1700d;1711d;1712d' /opt/rt-n56u/trunk/proprietary/rt_wifi/rtpci/5.0.4.0/mt7615/embedded/common/wnm.c
         
     - name: Build Firmware
       env:
@@ -75,7 +72,7 @@ jobs:
         echo "CONFIG_FIRMWARE_INCLUDE_TAILSCALE=n" >> .config #tailscale 约20k
         echo "CONFIG_FIRMWARE_INCLUDE_NATPIERCE=n" >> .config #皎月连 约20k
         echo "CONFIG_FIRMWARE_INCLUDE_VNTCLI=y" >> .config #vnt客户端 约80k
-        echo "CONFIG_FIRMWARE_INCLUDE_VNTS=y" >> .config #vnt服务端 约50k
+        echo "CONFIG_FIRMWARE_INCLUDE_VNTS=n" >> .config #vnt服务端 约50k
         echo "CONFIG_FIRMWARE_INCLUDE_CLOUDFLARED=n" >> .config #CF的隧道 约50k
         echo "CONFIG_FIRMWARE_INCLUDE_LUCKY=y" >> .config #LUCKY 约50k
         echo "CONFIG_FIRMWARE_INCLUDE_CLOUDFLARE=n" >> .config #CF-ddns 约50k
