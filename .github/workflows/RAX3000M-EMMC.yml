@@ -68,11 +68,12 @@ jobs:
         df -hT $PWD
         git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        cd openwrt
         # 若指定了哈希值则检出对应版本，留空则不执行检出
         if [ -n "${{ github.event.inputs.REPO_HASH }}" ]; then
-          cd openwrt && git checkout ${{ github.event.inputs.REPO_HASH }}
+          git checkout ${{ github.event.inputs.REPO_HASH }}
         fi
-        cd openwrt && echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
         
     - name: 下载自定义插件
       run: |
