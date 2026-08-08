@@ -24,6 +24,11 @@ on:
         required: false
         default: ''
         type: string
+      FEEDS_URL:
+        description: '自定义feeds地址（默认使用稳定版24.10.6的feeds.buildinfo）'
+        required: false
+        default: 'https://downloads.immortalwrt.org/releases/24.10.6/targets/mediatek/filogic/feeds.buildinfo'
+        type: string
 #设置仓库的读写权限
 permissions:
   contents: write
@@ -74,6 +79,10 @@ jobs:
           git checkout ${{ github.event.inputs.REPO_HASH }}
         fi
         echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        # 下载自定义feeds配置并替换 feeds.conf.default（默认使用稳定版24.10.6）
+        if [ -n "${{ github.event.inputs.FEEDS_URL }}" ]; then
+          wget -O feeds.conf.default ${{ github.event.inputs.FEEDS_URL }}
+        fi
         
     - name: 下载自定义插件
       run: |
