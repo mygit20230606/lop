@@ -29,7 +29,7 @@ on:
         required: false
         default: 'https://downloads.immortalwrt.org/releases/24.10.6/targets/mediatek/filogic/feeds.buildinfo'
         type: string
-#设置仓库的读写权限
+
 permissions:
   contents: write
 
@@ -37,7 +37,7 @@ jobs:
   build_firmware:
     runs-on: ubuntu-22.04
 
-    steps: 
+    steps:
 
     - name: 检出代码
       uses: actions/checkout@v6
@@ -62,7 +62,6 @@ jobs:
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
-        # 定义默认插件列表
         DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt  openssh-sftp-server kmod-dm htop curl bash fdisk sshpass tcpdump-mini \
         lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
@@ -74,27 +73,25 @@ jobs:
         git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
-        # 若指定了哈希值则检出对应版本，留空则不执行检出
         if [ -n "${{ github.event.inputs.REPO_HASH }}" ]; then
           git checkout ${{ github.event.inputs.REPO_HASH }}
         fi
         echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
-        # 下载自定义feeds配置并替换 feeds.conf.default（默认使用稳定版24.10.6）
         if [ -n "${{ github.event.inputs.FEEDS_URL }}" ]; then
           wget -O feeds.conf.default ${{ github.event.inputs.FEEDS_URL }}
         fi
-        
+
     - name: 下载自定义插件
       run: |
         chmod +x $GITHUB_WORKSPACE/custom-plugins.sh
         $GITHUB_WORKSPACE/custom-plugins.sh
-        
+
     - name: 更新源
       run: |
         set -x
         cd openwrt
         ./scripts/feeds update -a
-        ./scripts/feeds install -a 
+        ./scripts/feeds install -a
 
     - name: 自动缓存管理
       uses: HiGarfield/cachewrtbuild@main
@@ -107,44 +104,41 @@ jobs:
         cd openwrt
 
         cp defconfig/mt7981-ax3000.config .config
-        # 选择RAX3000M-EMMC
-        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config 
-        # 加载自定义插件配置
-        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config  # 删除tcpdump
-        
+        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config
+        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config
+
         # 添加默认插件
         IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
         for plugin in "${default_plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加默认插件: ${default_plugins[*]}"
-        
+
         # 添加用户自定义插件
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加自定义插件: ${plugins[@]}"
-        
-        #修改nfs内核编译报错
+
+        # 修改nfs内核编译报错
         sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
 
-        #设置ip
+        # 设置IP
         sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
 
+        # 移除 automount 对 kmod-usb-storage-uas 的依赖
+        sed -i '/kmod-usb-storage-uas/d' package/emortal/automount/Makefile
 
-        # 修改banner
-        #sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') /g" files/etc/banner
-        
-        #去除频繁日志
+        # 修改banner（如需启用，取消注释）
+        # sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') /g" files/etc/banner
+
+        # 去除频繁日志
         sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
-
 
         # 启用 bash
         sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
 
-
-    
     - name: 下载编译依赖
       id: package
       run: |
@@ -153,6 +147,16 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: 检查 UAS 是否被禁用
+      run: |
+        cd openwrt
+        if grep -E '^CONFIG_PACKAGE_kmod-usb-storage-uas=y|^CONFIG_USB_UAS=y' .config; then
+          echo "::error::UAS is enabled in .config. Please ensure it is disabled before building."
+          exit 1
+        else
+          echo "UAS is disabled in .config."
+        fi
 
     - name: 编译源码
       id: compile
