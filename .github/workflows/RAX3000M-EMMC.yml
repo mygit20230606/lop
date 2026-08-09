@@ -64,7 +64,7 @@ jobs:
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
         DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt  openssh-sftp-server kmod-dm htop curl bash fdisk sshpass tcpdump-mini \
-        lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage kmod-usb-storage-uas unzip smartmontools"
+        lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
