@@ -57,7 +57,7 @@ jobs:
 
     - name: 设置环境变量
       run: |
-        TAG="$(date +'%Y%m%d')"
+        TAG="$(date +'%Y%m%d%H%M')"
         echo "tag=$TAG" >> $GITHUB_ENV
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
@@ -73,10 +73,17 @@ jobs:
         git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
+
+        # 检查是否提供了自定义的仓库哈希值
+        echo "REPO_HASH=${{ github.event.inputs.REPO_HASH }}" >> $GITHUB_ENV
         if [ -n "${{ github.event.inputs.REPO_HASH }}" ]; then
           git checkout ${{ github.event.inputs.REPO_HASH }}
         fi
+
+        #记录当前仓库哈希值
         echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+        # 检查是否提供了自定义的feeds地址
         if [ -n "${{ github.event.inputs.FEEDS_URL }}" ]; then
           wget -O feeds.conf.default ${{ github.event.inputs.FEEDS_URL }}
         fi
@@ -121,14 +128,8 @@ jobs:
         done
         echo "已添加自定义插件: ${plugins[@]}"
 
-        # 修改nfs内核编译报错
-        sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
-
         # 设置IP
         sed -i "s/192.168.6.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
-
-        # 移除 automount 对 kmod-usb-storage-uas 的依赖
-        sed -i '/kmod-usb-storage-uas/d' package/emortal/automount/Makefile
 
         # 修改banner（如需启用，取消注释）
         # sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') /g" files/etc/banner
@@ -147,16 +148,6 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-
-    - name: 检查 UAS 是否被禁用
-      run: |
-        cd openwrt
-        if grep -E '^CONFIG_PACKAGE_kmod-usb-storage-uas=y|^CONFIG_USB_UAS=y' .config; then
-          echo "::error::UAS is enabled in .config. Please ensure it is disabled before building."
-          exit 1
-        else
-          echo "UAS is disabled in .config."
-        fi
 
     - name: 编译源码
       id: compile
