@@ -14,7 +14,8 @@ sed -i 's/1.2.16/v1.2.16/' vnt/Makefile
 # 修复日志警告: util -> xml
 sed -i 's/util/xml/g' luci-app-vnt/luasrc/model/cbi/vnt.lua
 
-# 修改nfs内核编译报错
-sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
+# 修改nfs内核编译报错 这个需要放到feeds更新之后
+#sed -i '/-Wno-error=missing-include-dirs/i\		-Wno-error=format-nonliteral \\' feeds/packages/net/nfs-kernel-server/Makefile
 # 移除 automount 对 kmod-usb-storage-uas 的依赖
+cd ../../
 sed -i '/kmod-usb-storage-uas/d' package/emortal/automount/Makefile
