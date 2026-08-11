@@ -140,6 +140,9 @@ jobs:
         # 启用 bash
         sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
 
+        # 移除 automount 对 kmod-usb-storage-uas 的依赖
+        sed -i '/kmod-usb-storage-uas/d' package/emortal/automount/Makefile
+
     - name: 下载编译依赖
       id: package
       run: |
