@@ -7,7 +7,7 @@ on:
       OP_IP:
         description: '静态IP地址'
         required: false
-        default: '192.168.92.100'
+        default: '192.168.91.1'
         type: string
       OP_author:
         description: '定制作者'
@@ -17,7 +17,7 @@ on:
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-vnt nfs-kernel-server unzip'
+        default: 'luci-app-vnt'
         type: string
 #设置仓库的读写权限
 permissions:
