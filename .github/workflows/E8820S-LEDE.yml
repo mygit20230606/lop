@@ -75,7 +75,7 @@ jobs:
         toolchain: true
         ccache: true
         mixkey: E8820S-LEDE
-        prefix: openwrt-LEDE
+        prefix: openwrt
 
     - name: 加载自定义配置
       run: |
