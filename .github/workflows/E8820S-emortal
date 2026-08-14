@@ -81,7 +81,7 @@ jobs:
       run: |
         cd openwrt
         # 选择E8820S配置
-        cp $GITHUB_WORKSPACE/test.config .config
+        cp $GITHUB_WORKSPACE/E8820S/.config .config
         cp $GITHUB_WORKSPACE/E8820S/emortal/mt7621_zte_e8820s.dts target/linux/ramips/dts/mt7621_zte_e8820s.dts
         cp $GITHUB_WORKSPACE/E8820S/emortal/mt7621.mk target/linux/ramips/image/mt7621.mk
 
@@ -118,7 +118,7 @@ jobs:
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -k -j$(nproc)
+        make -j$(nproc) || make -j1 V=s
 
     - name: 查看磁盘使用情况
       if: (!cancelled())
@@ -146,7 +146,6 @@ jobs:
         files: ${{ env.FIRMWARE }}/*
         body: |
           ====================固件信息=======================
-          CONFIG_ALL_KMODS=y
           静态IP：${{ github.event.inputs.OP_IP }}
           自定义插件：${{ github.event.inputs.CUSTOM_PLUGINS }}
           默认插件：${{ env.DEFAULT_PLUGINS }}

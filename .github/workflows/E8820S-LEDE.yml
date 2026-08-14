@@ -9,15 +9,10 @@ on:
         required: false
         default: '192.168.91.1'
         type: string
-      OP_author:
-        description: '定制作者'
-        required: false
-        default: 'L'
-        type: string
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
-        default: 'luci-app-vnt'
+        default: ''
         type: string
 #设置仓库的读写权限
 permissions:
@@ -50,7 +45,6 @@ jobs:
         TAG="$(date +'%Y%m%d%H%M')"
         echo "tag=$TAG" >> $GITHUB_ENV
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
-        echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
         # 定义默认插件列表
         DEFAULT_PLUGINS="" >> $GITHUB_ENV
@@ -80,16 +74,16 @@ jobs:
       with:
         toolchain: true
         ccache: true
-        mixkey: E8820S
-        prefix: openwrt
+        mixkey: E8820S-LEDE
+        prefix: openwrt-LEDE
 
     - name: 加载自定义配置
       run: |
         cd openwrt
         # 选择E8820S配置
         cp $GITHUB_WORKSPACE/E8820S/.config .config
-        cp $GITHUB_WORKSPACE/E8820S/mt7621_zte_e8820s.dts target/linux/ramips/dts/mt7621_zte_e8820s.dts
-        cp $GITHUB_WORKSPACE/E8820S/mt7621.mk target/linux/ramips/image/mt7621.mk
+        cp $GITHUB_WORKSPACE/E8820S/LEDE/mt7621_zte_e8820s.dts target/linux/ramips/dts/mt7621_zte_e8820s.dts
+        cp $GITHUB_WORKSPACE/E8820S/LEDE/mt7621.mk target/linux/ramips/image/mt7621.mk
 
 
         # 添加默认插件
@@ -155,7 +149,6 @@ jobs:
           静态IP：${{ github.event.inputs.OP_IP }}
           自定义插件：${{ github.event.inputs.CUSTOM_PLUGINS }}
           默认插件：${{ env.DEFAULT_PLUGINS }}
-          定制作者：${{ github.event.inputs.OP_author }}
           源码仓库哈希：${{ env.SOURCE_HASH }}
 
        
