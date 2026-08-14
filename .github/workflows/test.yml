@@ -118,7 +118,7 @@ jobs:
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -k -j$(nproc)
+        make -j$(nproc)
 
     - name: 查看磁盘使用情况
       if: (!cancelled())
