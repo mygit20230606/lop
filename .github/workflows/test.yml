@@ -1,4 +1,4 @@
-name: E8820S-emortal
+name: E8820S-emortal-test
 
 on:
   repository_dispatch:
