@@ -1,6 +1,6 @@
 ====================固件信息=======================
 本地编译
-静态IP:192.168.92.7
+静态IP:192.168.1.1
 自定义插件:luci-app-dockerman luci-app-ttyd
-默认插件:luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools
+默认插件:luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass hdparm tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools
 源码仓库哈希：ba554197ed7e252fd3c1ee023621e1d1d009d323

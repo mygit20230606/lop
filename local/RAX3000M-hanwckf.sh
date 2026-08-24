@@ -46,7 +46,7 @@ cd ../lop/local
 cat > "Releases.txt" <<EOF
 ====================固件信息=======================
 本地编译
-静态IP:192.168.92.100
+静态IP:192.168.1.1
 自定义插件:$CUSTOM_PLUGINS
 默认插件:$DEFAULT_PLUGINS
 源码仓库哈希：$SOURCE_HASH
