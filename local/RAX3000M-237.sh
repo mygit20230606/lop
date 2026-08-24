@@ -16,7 +16,7 @@ CUSTOM_PLUGINS='luci-app-dockerman luci-app-ttyd'
 export CUSTOM_PLUGINS
 
 # 默认插件
-DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
+DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass hdparmtcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
 export DEFAULT_PLUGINS
 
 # 加载默认配置并选择 RAX3000M-EMMC

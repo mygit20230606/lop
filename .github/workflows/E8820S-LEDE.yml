@@ -102,6 +102,9 @@ jobs:
         
         #设置ip
         sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
+        
+        # 启用 bash
+        sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
     
     - name: 下载编译依赖
       id: package

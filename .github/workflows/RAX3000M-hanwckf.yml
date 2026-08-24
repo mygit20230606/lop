@@ -1,4 +1,4 @@
-name: E8820S-emortal
+name: RAX3000M-hanwckf
 
 on:
   repository_dispatch:
@@ -7,14 +7,29 @@ on:
       OP_IP:
         description: '静态IP地址'
         required: false
-        default: '192.168.91.1'
+        default: '192.168.92.7'
+        type: string
+      OP_author:
+        description: '定制作者'
+        required: false
+        default: 'L'
         type: string
       CUSTOM_PLUGINS:
         description: '自定义插件名称，用空格分隔'
         required: false
+        default: 'luci-app-dockerman luci-app-ttyd'
+        type: string
+      REPO_HASH:
+        description: '源码仓库哈希值（留空则使用最新代码）'
+        required: false
         default: ''
         type: string
-#设置仓库的读写权限
+      FEEDS_URL:
+        description: '自定义feeds地址'
+        required: false
+        default: ''
+        type: string
+
 permissions:
   contents: write
 
@@ -22,7 +37,7 @@ jobs:
   build_firmware:
     runs-on: ubuntu-22.04
 
-    steps: 
+    steps:
 
     - name: 检出代码
       uses: actions/checkout@v6
@@ -45,46 +60,58 @@ jobs:
         TAG="$(date +'%Y%m%d%H%M')"
         echo "tag=$TAG" >> $GITHUB_ENV
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
+        echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
-        # 定义默认插件列表
-        DEFAULT_PLUGINS="" >> $GITHUB_ENV
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass hdparm tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
+        echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone -b v23.05.7 --depth 1 https://github.com/immortalwrt/immortalwrt.git openwrt
+        git clone --depth 1 https://github.com/hanwckf/immortalwrt-mt798x openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        cd openwrt && echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        cd openwrt
+
+        # 检查是否提供了自定义的仓库哈希值
+        echo "REPO_HASH=${{ github.event.inputs.REPO_HASH }}" >> $GITHUB_ENV
+        if [ -n "${{ github.event.inputs.REPO_HASH }}" ]; then
+          git checkout ${{ github.event.inputs.REPO_HASH }}
+        fi
+
+        #记录当前仓库哈希值
+        echo "SOURCE_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+        # 检查是否提供了自定义的feeds地址
+        if [ -n "${{ github.event.inputs.FEEDS_URL }}" ]; then
+          wget -O feeds.conf.default ${{ github.event.inputs.FEEDS_URL }}
+        fi
 
     - name: 下载自定义插件
       run: |
         chmod +x $GITHUB_WORKSPACE/custom-plugins.sh
         $GITHUB_WORKSPACE/custom-plugins.sh
-                
+
     - name: 更新源
       run: |
         set -x
         cd openwrt
         ./scripts/feeds update -a
-        ./scripts/feeds install -a 
+        ./scripts/feeds install -a
 
     - name: 自动缓存管理
       uses: HiGarfield/cachewrtbuild@main
       with:
-        toolchain: true
-        ccache: true
-        mixkey: E8820S-emortal
+        mixkey: RAX3000M-EMMC
         prefix: openwrt
 
     - name: 加载自定义配置
       run: |
         cd openwrt
-        # 选择E8820S配置
-        cp $GITHUB_WORKSPACE/E8820S/.config .config
-        cp $GITHUB_WORKSPACE/E8820S/emortal/mt7621_zte_e8820s.dts target/linux/ramips/dts/mt7621_zte_e8820s.dts
-        cp $GITHUB_WORKSPACE/E8820S/emortal/mt7621.mk target/linux/ramips/image/mt7621.mk
 
+        cp defconfig/mt7981-ax3000.config .config
+        echo "CONFIG_TARGET_mediatek_filogic_DEVICE_cmcc_rax3000m-emmc-mtk=y" >> .config
+        sed -i '/CONFIG_PACKAGE_tcpdump=y/d' .config
 
         # 添加默认插件
         IFS=' ' read -r -a default_plugins <<< "$DEFAULT_PLUGINS"
@@ -92,20 +119,29 @@ jobs:
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加默认插件: ${default_plugins[*]}"
-        
+
         # 添加用户自定义插件
         IFS=' ' read -r -a plugins <<< "${{ github.event.inputs.CUSTOM_PLUGINS }}"
         for plugin in "${plugins[@]}"; do
           echo "CONFIG_PACKAGE_${plugin}=y" >> .config
         done
         echo "已添加自定义插件: ${plugins[@]}"
-        
-        #设置ip
+
+        # 设置IP
         sed -i "s/192.168.1.1/${{ github.event.inputs.OP_IP }}/" package/base-files/files/bin/config_generate
+
+        # 修改banner（如需启用，取消注释）
+        # sed -i "s/ImmortalWrt-798x-24.10 from PadavanOnly/$(date +'%Y-%m-%d') /g" files/etc/banner
+
+        # 去除频繁日志
+        sed -i '/.*logger -t "mtk_smp"/d' package/mtk/applications/mtk-smp/files/smp.sh
 
         # 启用 bash
         sed -i 's,/bin/ash,/bin/bash,' package/base-files/files/{etc/passwd,usr/libexec/login.sh}
-    
+
+        # 移除 automount 对 kmod-usb-storage-uas 的依赖
+        sed -i '/kmod-usb-storage-uas/d' package/emortal/automount/Makefile
+
     - name: 下载编译依赖
       id: package
       run: |
@@ -114,14 +150,13 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-  
 
     - name: 编译源码
       id: compile
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 V=s
+        make -j$(nproc)
 
     - name: 查看磁盘使用情况
       if: (!cancelled())
@@ -135,6 +170,7 @@ jobs:
         rm -rf packages
         rm -rf profiles.json
         rm -rf *.manifest
+        rm -rf *bl2.bin
         rm -rf *kernel.bin
         rm -rf *.sha
         rm -rf sha256sums
@@ -145,13 +181,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.tag }}-e8820s-emortal
+        tag_name: ${{ env.tag }}-rax3000m-emmc
         files: ${{ env.FIRMWARE }}/*
         body: |
           ====================固件信息=======================
-          静态IP：${{ github.event.inputs.OP_IP }}
-          自定义插件：${{ github.event.inputs.CUSTOM_PLUGINS }}
-          默认插件：${{ env.DEFAULT_PLUGINS }}
+          静态IP:${{ github.event.inputs.OP_IP }}
+          自定义插件:${{ github.event.inputs.CUSTOM_PLUGINS }}
+          默认插件:${{ env.DEFAULT_PLUGINS }}
+          定制作者:${{ github.event.inputs.OP_author }}
           源码仓库哈希：${{ env.SOURCE_HASH }}
-
-       

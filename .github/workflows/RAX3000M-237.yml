@@ -1,4 +1,4 @@
-name: RAX3000M-EMMC
+name: RAX3000M-237
 
 on:
   repository_dispatch:
@@ -62,15 +62,14 @@ jobs:
         echo "OP_IP=${{ github.event.inputs.OP_IP }}" >> $GITHUB_ENV
         echo "OP_author=${{ github.event.inputs.OP_author }}" >> $GITHUB_ENV
         echo "CUSTOM_PLUGINS=${{ github.event.inputs.CUSTOM_PLUGINS }}" >> $GITHUB_ENV
-        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt  openssh-sftp-server kmod-dm htop curl bash fdisk sshpass tcpdump-mini \
-        lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
+        DEFAULT_PLUGINS="luci-theme-argon luci-app-vnt vnt openssh-sftp-server kmod-dm htop curl bash fdisk sshpass hdparm tcpdump-mini lsblk parted rsync kmod-tun iperf3 kmod-fs-ext4 kmod-usb-storage unzip smartmontools"
         echo "DEFAULT_PLUGINS=$DEFAULT_PLUGINS" >> $GITHUB_ENV
 
     - name: 克隆源代码
       working-directory: /workdir
       run: |
         df -hT $PWD
-        git clone https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
+        git clone --depth 1 https://github.com/padavanonly/immortalwrt-mt798x-6.6 openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
         cd openwrt
 

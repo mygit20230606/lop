@@ -19,13 +19,13 @@ fi
 git -C .. push origin HEAD
 
 # 复制 .config 到编译输出目录
-cp ../../immortalwrt-mt798x-6.6/.config ../../immortalwrt-mt798x-6.6/bin/targets/mediatek/filogic/
+cp ../../immortalwrt-mt798x/.config ../../immortalwrt-mt798x/bin/targets/mediatek/filogic/
 
 # 发布信息（发布说明由 RAX3000M-EMMCinit.sh 生成到 Releases.txt）
-TAG="$(date +'%Y%m%d%H%M')-rax3000m-emmc"
+TAG="$(date +'%Y%m%d%H%M')-rax3000m-hanwckf"
 
 # 进入输出目录后上传固件到 Releases
-cd ../../immortalwrt-mt798x-6.6/bin/targets/mediatek/filogic
+cd ../../immortalwrt-mt798x/bin/targets/mediatek/filogic
 gh release create "$TAG" \
   -R mygit20230606/lop \
   .config \
